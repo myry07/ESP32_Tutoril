@@ -1,4 +1,7 @@
 #include "esp_camera.h"
+#include <SPI.h>
+#include <TFT_eSPI.h>
+#include <TJpg_Decoder.h>
 
 #define PWDN_GPIO_NUM -1
 #define RESET_GPIO_NUM -1
@@ -19,11 +22,13 @@
 #define HREF_GPIO_NUM 7
 #define PCLK_GPIO_NUM 13
 
+TFT_eSPI tft = TFT_eSPI();
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
+  displayInit();
   cameraInit();
-
 }
 
 void loop() {
@@ -32,6 +37,10 @@ void loop() {
 }
 
 void cameraInit() {
+  Serial.begin(115200);
+  Serial.setDebugOutput(true);
+  Serial.println();
+
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -51,20 +60,23 @@ void cameraInit() {
   config.pin_sscb_scl = SIOC_GPIO_NUM;
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 10000000; // 10MHz 其实比 20MHz更快
+  config.xclk_freq_hz = 10000000;
   config.frame_size = FRAMESIZE_QQVGA;
-  config.pixel_format = PIXFORMAT_JPEG; // for streaming
+  config.pixel_format = PIXFORMAT_JPEG;  // for streaming
   config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
   config.fb_location = CAMERA_FB_IN_PSRAM;
-  config.jpeg_quality = 10;
+  config.jpeg_quality = 12;
   config.fb_count = 1;
 
+  // camera init
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x\n", err);  //初始化失败
-    while (1)
-      ;  // 停止程序
+    Serial.printf("Camera init failed with error 0x%x", err);  //初始化失败
+    return;
+  } else {
+    Serial.println("Camera init");
   }
+  delay(3000);
 }
 
 void showingImage() {
@@ -79,15 +91,31 @@ void showingImage() {
   } else {
     Serial.println("Captured JPEG image");
 
-    // int offsetX = 0;  //左右偏移 +右 -左
-    // int offsetY = 3;  //上下偏移 +下 -上
+    int offsetX = 0;  //左右偏移 +右 -左
+    int offsetY = 3;  //上下偏移 +下 -上
 
-    // if (TJpgDec.drawJpg(offsetX, offsetY, (const uint8_t*)fb->buf, fb->len)) {
-    //   Serial.println("JPEG drawn successfully.");
-    // } else {
-    //   Serial.println("JPEG draw failed.");  // 超出画框
-    // }
+    if (TJpgDec.drawJpg(offsetX, offsetY, (const uint8_t*)fb->buf, fb->len)) {
+      Serial.println("JPEG drawn successfully.");
+    } else {
+      Serial.println("JPEG draw failed.");  // 超出画框
+    }
   }
 
   esp_camera_fb_return(fb);  // 释放缓冲
+}
+
+bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
+  if (y >= tft.height()) return 0;
+  tft.pushImage(x, y, w, h, bitmap);
+  return 1;
+}
+
+void displayInit() {
+  tft.begin();
+  tft.setRotation(3);
+  tft.fillScreen(TFT_BLACK);
+
+  TJpgDec.setJpgScale(1);
+  TJpgDec.setSwapBytes(true);
+  TJpgDec.setCallback(tft_output);
 }
