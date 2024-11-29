@@ -76,7 +76,6 @@ void cameraInit() {
   } else {
     Serial.println("Camera init");
   }
-  delay(3000);
 }
 
 void showingImage() {
