@@ -66,7 +66,7 @@ void cameraInit() {
   config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
   config.fb_location = CAMERA_FB_IN_PSRAM;
   config.jpeg_quality = 12;
-  config.fb_count = 1;
+  config.fb_count = 2;
 
   // camera init
   esp_err_t err = esp_camera_init(&config);
