@@ -63,6 +63,7 @@ static lv_color_t buf1[screenWidth * screenHeight / 13];
 
 //_______________________
 void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
+
   uint32_t w = (area->x2 - area->x1 + 1);
   uint32_t h = (area->y2 - area->y1 + 1);
 
@@ -102,7 +103,6 @@ void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
 }
 
 
-
 void setup() {
   Serial.begin(115200); /*serial init */
 
@@ -129,6 +129,11 @@ void setup() {
   disp_drv.flush_cb = my_disp_flush;
   disp_drv.draw_buf = &draw_buf;
   lv_disp_drv_register(&disp_drv);
+
+  //旋转
+  disp_drv.sw_rotate = 1;  // If you turn on software rotation, Do not update or replace LVGL
+  disp_drv.rotated = LV_DISP_ROT_180;
+  disp_drv.full_refresh = 1;  // full_refresh must be 1
 
   /* Initialize the (dummy) input device driver */
   static lv_indev_drv_t indev_drv;

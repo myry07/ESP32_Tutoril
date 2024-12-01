@@ -1,39 +1,10 @@
-/**************************CrowPanel ESP32 HMI Display Example Code************************
-Version     :	1.1
-Suitable for:	CrowPanel ESP32 HMI Display
-Product link:	https://www.elecrow.com/esp32-display-series-hmi-touch-screen.html
-Code	  link:	https://github.com/Elecrow-RD/CrowPanel-ESP32-Display-Course-File
-Lesson	link:	https://www.youtube.com/watch?v=WHfPH-Kr9XU
-Description	:	The code is currently available based on the course on YouTube,
-				        if you have any questions, please refer to the course video: Introduction
-				        to ask questions or feedback.
-**************************************************************/
-
-
-#include <TFT_eSPI.h>
-/**************************TFT_eSPI************************
-If you don't know how to configure TFT_eSPI library for the display and touch driver
-Please refer to the content of the fifth lesson
-**************************************************************/
-#include <Arduino.h>
+#include "esp_camera.h"
 #include <SPI.h>
-
-/**************************LVGL and UI************************
-if you want to use the LVGL demo. you need to include <demos/lv_demos.h> and <examples/lv_examples.h>.
-if not, please do not include it. It will waste your Flash space.
-**************************************************************/
+#include <TFT_eSPI.h>
+#include <TJpg_Decoder.h>
+#include <Arduino.h>
 #include <lvgl.h>
 #include "ui.h"
-// #include <demos/lv_demos.h>
-// #include <examples/lv_examples.h>
-/**************************LVGL and UI END************************/
-
-/*******************************************************************************
- * Please define the corresponding macros based on the board you have purchased.
- * CrowPanel_24 means CrowPanel ESP32 HMI 2.4inch Board
- * CrowPanel_28 means CrowPanel ESP32 HMI 2.8inch Board
- * CrowPanel_35 means CrowPanel ESP32 HMI 3.5inch Board
- ******************************************************************************/
 // #define CrowPanel_24
 //#define CrowPanel_28
 #define CrowPanel_35
@@ -54,6 +25,26 @@ static const uint16_t screenWidth = 320;
 static const uint16_t screenHeight = 240;
 uint16_t calData[5] = { 189, 3416, 359, 3439, 1 };
 #endif
+
+
+#define PWDN_GPIO_NUM -1
+#define RESET_GPIO_NUM -1
+#define XCLK_GPIO_NUM 15
+#define SIOD_GPIO_NUM 4
+#define SIOC_GPIO_NUM 5
+
+#define Y2_GPIO_NUM 11
+#define Y3_GPIO_NUM 9
+#define Y4_GPIO_NUM 8
+#define Y5_GPIO_NUM 10
+#define Y6_GPIO_NUM 12
+#define Y7_GPIO_NUM 18
+#define Y8_GPIO_NUM 17
+#define Y9_GPIO_NUM 16
+
+#define VSYNC_GPIO_NUM 6
+#define HREF_GPIO_NUM 7
+#define PCLK_GPIO_NUM 13
 
 
 TFT_eSPI tft = TFT_eSPI(); /* TFT entity */
@@ -101,7 +92,90 @@ void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
   }
 }
 
+void cameraInit() {
+  Serial.begin(115200);
+  Serial.setDebugOutput(true);
+  Serial.println();
 
+  camera_config_t config;
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer = LEDC_TIMER_0;
+  config.pin_d0 = Y2_GPIO_NUM;
+  config.pin_d1 = Y3_GPIO_NUM;
+  config.pin_d2 = Y4_GPIO_NUM;
+  config.pin_d3 = Y5_GPIO_NUM;
+  config.pin_d4 = Y6_GPIO_NUM;
+  config.pin_d5 = Y7_GPIO_NUM;
+  config.pin_d6 = Y8_GPIO_NUM;
+  config.pin_d7 = Y9_GPIO_NUM;
+  config.pin_xclk = XCLK_GPIO_NUM;
+  config.pin_pclk = PCLK_GPIO_NUM;
+  config.pin_vsync = VSYNC_GPIO_NUM;
+  config.pin_href = HREF_GPIO_NUM;
+  config.pin_sscb_sda = SIOD_GPIO_NUM;
+  config.pin_sscb_scl = SIOC_GPIO_NUM;
+  config.pin_pwdn = PWDN_GPIO_NUM;
+  config.pin_reset = RESET_GPIO_NUM;
+  config.xclk_freq_hz = 20000000;
+  config.frame_size = FRAMESIZE_QVGA;
+  config.pixel_format = PIXFORMAT_JPEG;  // for streaming
+  config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+  config.fb_location = CAMERA_FB_IN_PSRAM;
+  config.jpeg_quality = 12;
+  config.fb_count = 2;
+
+  // camera init
+  esp_err_t err = esp_camera_init(&config);
+  if (err != ESP_OK) {
+    Serial.printf("Camera init failed with error 0x%x", err);  //初始化失败
+    return;
+  } else {
+    Serial.println("Camera init");
+  }
+
+  delay(3000);
+}
+
+void showingImage() {
+  camera_fb_t* fb = esp_camera_fb_get();  // 获取帧缓冲
+  if (!fb) {
+    Serial.println("Failed to capture image");  // 无法捕获图片
+    return;
+  }
+
+  if (fb->format != PIXFORMAT_JPEG) {
+    Serial.println("no JPEG format");  // 非JPEG
+  } else {
+    Serial.println("Captured JPEG image");
+
+    int offsetX = 0;  //左右偏移 +右 -左
+    int offsetY = 40;  //上下偏移 +下 -上
+
+    if (TJpgDec.drawJpg(offsetX, offsetY, (const uint8_t*)fb->buf, fb->len)) {
+      Serial.println("JPEG drawn successfully.");
+    } else {
+      Serial.println("JPEG draw failed.");  // 超出画框
+    }
+  }
+
+  esp_camera_fb_return(fb);  // 释放缓冲
+}
+
+bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
+  if (y >= tft.height()) return 0;
+  tft.pushImage(x, y, w, h, bitmap);
+  return 1;
+}
+
+void displayInit() {
+  tft.begin();
+  tft.setRotation(3);
+  tft.fillScreen(TFT_BLACK);
+
+  TJpgDec.setJpgScale(1);
+  TJpgDec.setSwapBytes(true);
+  TJpgDec.setCallback(tft_output);
+}
 
 void setup() {
   Serial.begin(115200); /*serial init */

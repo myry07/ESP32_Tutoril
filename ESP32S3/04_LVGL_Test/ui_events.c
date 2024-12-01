@@ -5,18 +5,22 @@
 
 #include "ui.h"
 
-void TurnOffLED(lv_event_t *e) {
-  digitalWrite(48, 0);
+void TurnOffLED(lv_event_t * e)
+{
+	digitalWrite(48,0);
 }
 
-void TurnOffLED_(lv_event_t *e) {
-  digitalWrite(48, 0);
+void TurnOffLED_(lv_event_t * e)
+{
+	// Your code here
 }
 
-void TurnOnLED(lv_event_t *e) {
-  digitalWrite(48, 1);
+void TurnOnLED(lv_event_t * e)
+{
+	digitalWrite(48,1);
 }
 
-void EnterHide(lv_event_t *e) {
-
+void EnterHide(lv_event_t * e)
+{
+	// Your code here
 }

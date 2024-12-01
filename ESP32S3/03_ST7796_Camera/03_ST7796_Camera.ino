@@ -28,7 +28,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   cameraInit();
-  displayInit(); 
+  displayInit();
 }
 
 void loop() {
@@ -92,7 +92,7 @@ void showingImage() {
   } else {
     Serial.println("Captured JPEG image");
 
-    int offsetX = 0;  //左右偏移 +右 -左
+    int offsetX = 0;   //左右偏移 +右 -左
     int offsetY = 40;  //上下偏移 +下 -上
 
     if (TJpgDec.drawJpg(offsetX, offsetY, (const uint8_t*)fb->buf, fb->len)) {
@@ -111,9 +111,10 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
   return 1;
 }
 
+
 void displayInit() {
   tft.begin();
-  tft.setRotation(3);
+  tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
 
   TJpgDec.setJpgScale(1);
